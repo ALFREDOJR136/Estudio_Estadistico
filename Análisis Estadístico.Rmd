@@ -1,0 +1,107 @@
+```{r}
+library(readxl)
+datos <- read_excel("C:/Users/usuario/OneDrive - Fundación Universitaria San Pablo CEU/Escritorio/Estudio Relación horas de sueño vs Nota media de un estudiante/Datos Estadística.xlsx")
+View(datos)
+
+# Cargar librerías necesarias
+library(tidyverse) 
+library(ggplot2)
+
+# PREPARACION DE LOS DATOS: Convertir a numérico y asegurar el orden de las categorías
+datos_graficos <- datos %>%
+  mutate(
+    nota_media_0_10 = as.numeric(nota_media_0_10),
+    calidad_sueno_1_10 = as.numeric(calidad_sueno_1_10),
+    actividad_fisica_1_10 = as.numeric(actividad_fisica_1_10),
+    # Asegurar el orden de las categorías de horas de sueño
+    horas_sueno_cat = factor(horas_sueno_cat, 
+                             levels = c("<5h", "5–7h", "7–8h", "8-10h", ">10h"))
+  ) %>%
+  # Eliminar filas con notas medias faltantes
+  filter(!is.na(nota_media_0_10))
+  
+
+## GRAFICO 1: Horas de Sueño vs. Nota Media
+ggplot(datos_graficos, aes(x = horas_sueno_cat, y = nota_media_0_10, fill = sexo)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = NA) + # Ocultar outliers estándar
+  geom_jitter(aes(color = sexo), width = 0.1, alpha = 0.4) +        # Añadir puntos de datos individuales
+  
+  # Dividir por curso (facet_wrap)
+  facet_wrap(~ curso, nrow = 2) +
+  
+  # Etiquetas y Títulos
+  labs(title = "NOTA MEDIA POR HORAS DE SUEÑO.",
+       subtitle = "Separación por sexo y cursos.",
+       x = "Horas de Sueño",
+       y = "Nota Media",
+       fill = "Sexo") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+## GRAFICO 2: Nota media vs Calidad de sueño.
+ggplot(datos_graficos, aes(x = calidad_sueno_1_10, y = nota_media_0_10, color = sexo)) +
+  geom_jitter(alpha = 0.4, width = 0.2, height = 0.1) +
+  geom_smooth(method = "lm", se = TRUE) +
+  
+  facet_wrap(~ curso, nrow = 2) +
+  
+  labs(title = "NOTA MEDIA POR CALIDAD DE SUEÑO.",
+       subtitle = "Separación por sexo y curso.",
+       x = "Calidad del sueño",
+       y = "Nota media",
+       color = "Sexo") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+## GRAFICO 3: Nota media vs Actividad fisica.
+ggplot(
+  datos_graficos %>% drop_na(nota_media_0_10, actividad_fisica_1_10, sexo, curso),
+  aes(x = actividad_fisica_1_10, y = nota_media_0_10, color = sexo)
+) +
+  geom_jitter(alpha = 0.4, width = 0.2, height = 0.1) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ curso, nrow = 2) +
+  labs(
+    title = "NOTA MEDIA POR ACTIVIDAD FÍSICA.",
+    subtitle = "Separación por sexo y curso.",
+    x = "Actividad física",
+    y = "Nota media",
+    color = "Sexo"
+  ) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+## GRAFICO 4: Nota media vs Edad.
+
+ggplot(
+  datos_graficos %>% drop_na(nota_media_0_10, edad_categoria, sexo, curso),
+  aes(x = as.numeric(edad_categoria), y = nota_media_0_10, color = sexo)
+) +
+  geom_jitter(alpha = 0.4, width = 0.2, height = 0.1) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ curso, nrow = 2) +
+  labs(
+    title = "NOTA MEDIA POR EDAD.",
+    subtitle = "Separación por sexo y curso.",
+    x = "Edad",
+    y = "Nota media",
+    color = "Sexo"
+  ) +
+  theme_bw() +
+  coord_cartesian(ylim = c(0, 10))
+
+cor.test(datos_graficos$nota_media_0_10, datos_graficos$calidad_sueno_1_10)
+cor.test(datos_graficos$nota_media_0_10, datos_graficos$actividad_fisica_1_10)
+cor.test(datos_graficos$nota_media_0_10, as.numeric(datos_graficos$edad_categoria))
+
+# ANOVA para horas de sueño
+anova_sueno <- aov(nota_media_0_10 ~ horas_sueno_cat, data = datos_graficos)
+summary(anova_sueno)
+
+# Modelo de regresión
+modelo <- lm(nota_media_0_10 ~ calidad_sueno_1_10 + horas_sueno_cat +
+               actividad_fisica_1_10 + as.numeric(edad_categoria) + sexo,
+             data = datos_graficos)
+summary(modelo)
+```
